@@ -84,25 +84,29 @@ void MergeTreePartition::serializeTextQuoted(const MergeTreeData & storage, Writ
     if (key_size == 0)
     {
         writeCString("tuple()", out);
-        return;
     }
-
-    if (key_size > 1)
-        writeChar('(', out);
-
-    for (size_t i = 0; i < key_size; ++i)
+    else if (key_size == 1)
     {
-        if (i > 0)
-            writeCString(", ", out);
-
-        const DataTypePtr & type = storage.partition_key_sample.getByPosition(i).type;
+        const DataTypePtr & type = storage.partition_key_sample.getByPosition(0).type;
         auto column = type->createColumn();
-        column->insert(value[i]);
-        type->serializeTextQuoted(*column, 0, out, format_settings);
+        column->insert(value[0]);
+        type->serializeText(*column, 0, out, format_settings);
     }
+    else
+    {
+        writeChar('(', out);
+        for (size_t i = 0; i < key_size; ++i)
+        {
+            if (i > 0)
+                writeCString(", ", out);
 
-    if (key_size > 1)
+            const DataTypePtr & type = storage.partition_key_sample.getByPosition(i).type;
+            auto column = type->createColumn();
+            column->insert(value[i]);
+            type->serializeTextQuoted(*column, 0, out, format_settings);
+        }
         writeChar(')', out);
+    }
 }
 
 void MergeTreePartition::load(const MergeTreeData & storage, const String & part_path)
